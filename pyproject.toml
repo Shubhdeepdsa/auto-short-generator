@@ -13,6 +13,11 @@ dependencies = [
     "typer>=0.21.1",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+]
+
 [project.scripts]
 auto = "autos.cli:main"
 

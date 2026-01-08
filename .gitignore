@@ -10,3 +10,5 @@ wheels/
 .venv
 artifacts/
 snippets/
+.env
+.env.local

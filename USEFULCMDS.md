@@ -22,14 +22,14 @@ This sets up a working Python environment, installs dependencies, and makes the 
 uv run auto init -e ep001 -s seriesA
 ```
 
-This creates a clean artifact folder tree where all outputs for `ep001` will live.
+This creates a clean artifact folder tree where all outputs for `seriesA/ep001` will live.
 
 ### 3) Add raw video
 
 Put your source video file(s) into:
 
 ```
-artifacts/ep001/input/
+artifacts/seriesA/ep001/input/
 ```
 
 ---
@@ -40,17 +40,18 @@ When you run `auto init`, the following dirs are created:
 
 ```
 artifacts/
-└── ep001/
-    ├── run.json         # metadata snapshot
-    ├── input/           # raw inputs (video, subtitles)
-    ├── scenes/          # scene detection outputs
-    ├── chunks/          # grouped scenes
-    ├── frames/          # sampled frames
-    ├── vision/          # captions & titles
-    ├── scores/          # scoring outputs
-    ├── timeline/        # integrated scene+dialogue timeline
-    ├── plans/           # LLM selection plans
-    └── renders/         # final shorts & clips
+└── seriesA/
+    └── ep001/
+        ├── run.json         # metadata snapshot
+        ├── input/           # raw inputs (video, subtitles)
+        ├── scenes/          # scene detection outputs
+        ├── chunks/          # grouped scenes
+        ├── frames/          # sampled frames
+        ├── vision/          # captions & titles
+        ├── scores/          # scoring outputs
+        ├── timeline/        # integrated scene+dialogue timeline
+        ├── plans/           # LLM selection plans
+        └── renders/         # final shorts & clips
 ```
 
 This structure keeps each pipeline stage contained and traceable.
@@ -80,10 +81,79 @@ Regenerates the lockfile for reproducible installs.
 ### 📌 Initialize Episode
 
 ```bash
-uv run auto init --episode-id ep001
+uv run auto init --episode-id ep001 --series-id seriesA
 ```
 
 Creates artifact directories and writes run metadata.
+
+---
+
+### 🎬 Scene Detect (raw scenes)
+
+```bash
+uv run auto scene-detect --video path/to/video.mp4 --series-id seriesA --episode-id ep001
+```
+
+Writes:
+* `artifacts/<series-id>/<episode-id>/scenes/raw/scenes.json`
+* `artifacts/<series-id>/<episode-id>/scenes/raw/scenes.csv`
+* Legacy: `scenes/raw_scenes.json` + `scenes/raw_scenes.csv`
+
+Add thumbnails:
+
+```bash
+uv run auto scene-detect --video path/to/video.mp4 --series-id seriesA --episode-id ep001 --thumbs
+```
+
+---
+
+### 🧱 Scene Merge (merged scenes)
+
+```bash
+uv run auto scene-merge --series-id seriesA --episode-id ep001
+```
+
+Writes:
+* `artifacts/<series-id>/<episode-id>/scenes/merged/scenes.json`
+* `artifacts/<series-id>/<episode-id>/scenes/merged/scenes.csv`
+* Legacy: `scenes/merged_scenes.json` + `scenes/merged_scenes.csv`
+
+Merged thumbnails (requires video path):
+
+```bash
+uv run auto scene-merge --series-id seriesA --episode-id ep001 --merged-thumbs --video path/to/video.mp4
+```
+
+---
+
+### 🚀 Scene Pipeline (detect + merge)
+
+```bash
+uv run auto scene-pipeline --video path/to/video.mp4 --series-id seriesA --episode-id ep001 --thumbs --merged-thumbs
+```
+
+Runs detect + merge in one call and writes raw/merged outputs (and thumbs if enabled).
+
+---
+
+## 🧪 Snippet Dev Commands (ep001_snip)
+
+Use these while iterating on the snippet workflow:
+
+```bash
+uv run auto init --episode-id ep001_snip --series-id seriesA
+uv run auto scene-pipeline --video snippets/ep001_snip.mp4 --series-id seriesA --episode-id ep001_snip --thumbs --merged-thumbs
+uv run auto scene-merge --series-id seriesA --episode-id ep001_snip --merged-thumbs --video snippets/ep001_snip.mp4
+ls -la artifacts/seriesA/ep001_snip/scenes
+find artifacts/seriesA/ep001_snip/scenes -maxdepth 5 -type f -iname "*merged*" -print
+find artifacts/seriesA/ep001_snip/scenes -maxdepth 5 -type f \\( -iname "*.jpg" -o -iname "*.png" -o -iname "*.webp" \\) | head
+```
+
+If you set `TEST_VIDEO` in `.env`, you can run:
+
+```bash
+uv run auto scene-pipeline --video "$TEST_VIDEO" --series-id seriesA --episode-id ep001_snip --thumbs
+```
 
 ---
 
@@ -114,7 +184,7 @@ uv run python -m autos.cli <command> [options]
 Example:
 
 ```bash
-uv run python -m autos.cli init --episode-id ep001
+uv run python -m autos.cli init --episode-id ep001 --series-id seriesA
 ```
 
 This always works even if `auto` isn’t registered.
@@ -126,19 +196,21 @@ This always works even if `auto` isn’t registered.
 As you build more stages, these are example commands you’ll add:
 
 ```
-uv run auto scene-detect --input path/to/video.mp4 --episode-id ep001
-uv run auto chunk --episode-id ep001
-uv run auto parse-subtitles --path subtitles.srt --episode-id ep001
-uv run auto extract-frames --episode-id ep001
-uv run auto apply-vision --episode-id ep001
-uv run auto compute-scores --episode-id ep001
-uv run auto plan-short --episode-id ep001 --target-length 180
-uv run auto render --episode-id ep001
+uv run auto scene-detect --video path/to/video.mp4 --series-id seriesA --episode-id ep001
+uv run auto scene-merge --series-id seriesA --episode-id ep001
+uv run auto scene-pipeline --video path/to/video.mp4 --series-id seriesA --episode-id ep001 --thumbs
+uv run auto chunk --series-id seriesA --episode-id ep001
+uv run auto parse-subtitles --path subtitles.srt --series-id seriesA --episode-id ep001
+uv run auto extract-frames --series-id seriesA --episode-id ep001
+uv run auto apply-vision --series-id seriesA --episode-id ep001
+uv run auto compute-scores --series-id seriesA --episode-id ep001
+uv run auto plan-short --series-id seriesA --episode-id ep001 --target-length 180
+uv run auto render --series-id seriesA --episode-id ep001
 ```
 
 Each command:
 
-* reads from `artifacts/<episode-id>/…`
+* reads from `artifacts/<series-id>/<episode-id>/…`
 * writes into another stage folder
 * logs progress
 
@@ -149,7 +221,7 @@ Each command:
 Sometimes you’ll want more detail:
 
 ```
-AUTOS_LOG_LEVEL=DEBUG uv run auto scene-detect --episode-id ep001
+AUTOS_LOG_LEVEL=DEBUG uv run auto scene-detect --series-id seriesA --episode-id ep001
 ```
 
 This prints deeper internals so you can observe processing steps.
@@ -160,6 +232,54 @@ This prints deeper internals so you can observe processing steps.
 * INFO
 * WARN
 * ERROR
+
+---
+
+## 📄 .env File (no exporting needed)
+
+Create a `.env` in repo root (copy from `.env.example`):
+
+```bash
+cp .env.example .env
+```
+
+Example `.env`:
+
+```
+ARTIFACTS_DIR=artifacts
+LOG_LEVEL=INFO
+TEST_VIDEO=snippets/ep001_snip.mp4
+```
+
+Notes:
+* `ARTIFACTS_DIR` and `LOG_LEVEL` override `config.yaml`.
+* `TEST_VIDEO` (or `AUTOS_TEST_VIDEO`) is used by tests automatically.
+* You can also use `AUTOS_ARTIFACTS_DIR` / `AUTOS_LOG_LEVEL` in `.env` if you prefer.
+
+---
+
+## ✅ Testing (Pytest)
+
+Install dev dependencies:
+
+```bash
+uv sync --extra dev
+```
+
+Run all tests:
+
+```bash
+uv run pytest
+```
+
+Run scene-detect + thumbs tests (needs a real video file):
+
+```bash
+TEST_VIDEO=/path/to/video.mp4 uv run pytest
+```
+
+Why?
+Scene-detect and thumbnail tests are skipped unless `TEST_VIDEO` or `AUTOS_TEST_VIDEO` points to a valid file.
 
 ---
 
@@ -176,7 +296,7 @@ You can override configuration without editing code.
 Example:
 
 ```bash
-AUTOS_ARTIFACTS_DIR=custom_out uv run auto init --episode-id ep002
+AUTOS_ARTIFACTS_DIR=custom_out uv run auto init --episode-id ep002 --series-id seriesA
 ```
 
 ---
@@ -200,7 +320,7 @@ Because `uv sync` creates a reproducible environment with libraries such as `typ
 ### Step 2 — Initialize an Episode
 
 ```bash
-uv run auto init --episode-id ep001
+uv run auto init --episode-id ep001 --series-id seriesA
 ```
 
 Why?
@@ -211,7 +331,7 @@ This builds the workspace for an episode: every pipeline stage will write here, 
 ### Step 3 — Add Input Files
 
 ```
-artifacts/ep001/input/
+artifacts/seriesA/ep001/input/
 ├── episode.mp4
 └── episode.srt
 ```
@@ -234,7 +354,7 @@ This disciplined workflow gives you:
 
 ## 📌 Tips & Best Practices
 
-### 1️⃣ Always add new output folders under `artifacts/<episode-id>/…`
+### 1️⃣ Always add new output folders under `artifacts/<series-id>/<episode-id>/…`
 
 Never write outside this tree.
 
@@ -254,15 +374,20 @@ Use `AUTOS_LOG_LEVEL=DEBUG` while developing each stage.
 
 ## ⚡ Quick Reference Table
 
-| Task                        | Command                                         |
-| --------------------------- | ----------------------------------------------- |
-| Bootstrap project           | `uv init --app`                                 |
-| Install deps + CLI          | `uv sync`                                       |
-| Initialize episode          | `uv run auto init --episode-id ep001`           |
-| View help                   | `uv run auto --help`                            |
-| Run a stage directly        | `uv run python -m autos.cli <command>`          |
-| Debug with verbose logs     | `AUTOS_LOG_LEVEL=DEBUG uv run auto <command>`   |
-| Override artifacts location | `AUTOS_ARTIFACTS_DIR=path uv run auto init ...` |
+| Task                        | Command                                                                                     |
+| --------------------------- | ------------------------------------------------------------------------------------------- |
+| Bootstrap project           | `uv init --app`                                                                             |
+| Install deps + CLI          | `uv sync`                                                                                   |
+| Install dev deps (tests)    | `uv sync --extra dev`                                                                       |
+| Initialize episode          | `uv run auto init --episode-id ep001 --series-id seriesA`                                   |
+| Scene detect                | `uv run auto scene-detect --video path/to/video.mp4 --series-id seriesA --episode-id ep001` |
+| Scene merge + thumbs        | `uv run auto scene-merge --series-id seriesA --episode-id ep001 --merged-thumbs --video path/to/video.mp4` |
+| Scene pipeline              | `uv run auto scene-pipeline --video path/to/video.mp4 --series-id seriesA --episode-id ep001 --thumbs --merged-thumbs` |
+| Run tests                   | `TEST_VIDEO=path/to/video.mp4 uv run pytest`                                                 |
+| View help                   | `uv run auto --help`                                                                        |
+| Run a stage directly        | `uv run python -m autos.cli <command>`                                                      |
+| Debug with verbose logs     | `AUTOS_LOG_LEVEL=DEBUG uv run auto <command>`                                               |
+| Override artifacts location | `AUTOS_ARTIFACTS_DIR=path uv run auto init ... --series-id seriesA`                          |
 
 ---
 
