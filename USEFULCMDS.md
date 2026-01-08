@@ -19,7 +19,7 @@ This sets up a working Python environment, installs dependencies, and makes the 
 ### 2) Initialize an episode
 
 ```bash
-uv run auto init --episode-id ep001
+uv run auto init -e ep001 -s seriesA
 ```
 
 This creates a clean artifact folder tree where all outputs for `ep001` will live.

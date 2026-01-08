@@ -1,8 +1,14 @@
 from pathlib import Path
 from typing import Dict
 
-def episode_dirs(artifacts_root: str | Path, episode_id: str) -> Dict[str, Path]:
-    root = Path(artifacts_root) / episode_id
+def episode_dirs(
+    artifacts_root: str | Path,
+    episode_id: str,
+    series_id: str,
+) -> Dict[str, Path]:
+    root = Path(artifacts_root)
+    root = root / series_id
+    root = root / episode_id
     return {
         "root": root,
         "input": root / "input",

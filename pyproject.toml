@@ -9,6 +9,7 @@ dependencies = [
     "pydantic-settings>=2.12.0",
     "pyyaml>=6.0.3",
     "rich>=14.2.0",
+    "scenedetect[opencv]>=0.6.7.1",
     "typer>=0.21.1",
 ]
 
@@ -20,6 +21,11 @@ auto = "autos.cli:main"
 requires = ["setuptools>=65.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
+
+
 # Tell uv that this project should install itself
 [tool.uv]
 package = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
