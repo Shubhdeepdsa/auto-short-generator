@@ -1,0 +1,13 @@
+project_name: "autos"
+artifacts_dir: "artifacts"
+
+logging:
+  level: "INFO"
+
+scene:
+  # we’ll use later
+  min_scene_sec: 1.5
+
+chunking:
+  target_sec: 1800
+  tolerance_sec: 120
