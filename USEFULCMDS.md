@@ -126,13 +126,91 @@ uv run auto scene-merge --series-id seriesA --episode-id ep001 --merged-thumbs -
 
 ---
 
-### 🚀 Scene Pipeline (detect + merge)
+### 🚀 Pipeline (detect + merge + chunk)
+
+```bash
+uv run auto pipeline --video path/to/video.mp4 --series-id seriesA --episode-id ep001 --thumbs --merged-thumbs
+```
+
+Runs detect + merge + chunk in one call and writes raw/merged/chunks outputs (and thumbs if enabled).
+
+Include subtitles to build timeline in the same run:
+
+```bash
+uv run auto pipeline --video path/to/video.mp4 --series-id seriesA --episode-id ep001 --subtitle artifacts/seriesA/ep001/input/episode.srt
+```
+
+Optional offset:
+
+```bash
+uv run auto pipeline --video path/to/video.mp4 --series-id seriesA --episode-id ep001 --subtitle artifacts/seriesA/ep001/input/episode.srt --subtitle-offset-ms 250
+```
+
+Only scene stages (no chunking):
 
 ```bash
 uv run auto scene-pipeline --video path/to/video.mp4 --series-id seriesA --episode-id ep001 --thumbs --merged-thumbs
 ```
 
-Runs detect + merge in one call and writes raw/merged outputs (and thumbs if enabled).
+---
+
+### 📦 Chunk Scenes (nearest boundary rule)
+
+```bash
+uv run auto chunk --series-id seriesA --episode-id ep001
+```
+
+Override target/tolerance (seconds):
+
+```bash
+uv run auto chunk --series-id seriesA --episode-id ep001 --target-sec 600 --tolerance-sec 60
+```
+
+Writes:
+* `artifacts/<series-id>/<episode-id>/chunks/chunks.json`
+
+---
+
+### 📝 Subtitles Trim (dev snippets)
+
+Trim a full movie .srt down to a shorter window (e.g., first 10 minutes):
+
+```bash
+uv run auto subtitles-trim --input path/to/full.srt --output artifacts/seriesA/ep001_snip/input/episode_snip.srt --end-sec 600
+```
+
+If you set `SUBTITLE_TRIM_START_SEC` / `SUBTITLE_TRIM_END_SEC` in `.env`, you can omit the flags:
+
+```bash
+uv run auto subtitles-trim --input path/to/full.srt --output artifacts/seriesA/ep001_snip/input/episode_snip.srt
+```
+
+---
+
+### 🧠 Timeline Build (align subtitles to scenes)
+
+```bash
+uv run auto timeline --series-id seriesA --episode-id ep001 --subtitle artifacts/seriesA/ep001/input/episode.srt
+```
+
+Optional offset:
+
+```bash
+uv run auto timeline --series-id seriesA --episode-id ep001 --subtitle artifacts/seriesA/ep001/input/episode.srt --subtitle-offset-ms 250
+```
+
+Writes:
+* `artifacts/<series-id>/<episode-id>/timeline/timeline_base.json`
+
+---
+
+### 🧾 Chunk Summary (quick view)
+
+```bash
+uv run auto chunk-summary --series-id seriesA --episode-id ep001
+```
+
+Prints a one-line summary per chunk (scene range + timestamps).
 
 ---
 
@@ -141,9 +219,15 @@ Runs detect + merge in one call and writes raw/merged outputs (and thumbs if ena
 Use these while iterating on the snippet workflow:
 
 ```bash
+ffmpeg -y -i og_test_files/Tenet.mp4 -ss 00:00:00 -t 600 -c copy snippets/ep001_snip.mp4
 uv run auto init --episode-id ep001_snip --series-id seriesA
-uv run auto scene-pipeline --video snippets/ep001_snip.mp4 --series-id seriesA --episode-id ep001_snip --thumbs --merged-thumbs
+uv run auto pipeline --video snippets/ep001_snip.mp4 --series-id seriesA --episode-id ep001_snip --thumbs --merged-thumbs
 uv run auto scene-merge --series-id seriesA --episode-id ep001_snip --merged-thumbs --video snippets/ep001_snip.mp4
+uv run auto chunk --series-id seriesA --episode-id ep001_snip --target-sec 600 --tolerance-sec 60
+uv run auto chunk-summary --series-id seriesA --episode-id ep001_snip
+uv run auto subtitles-trim --input og_test_files/Tenet-English.srt --output artifacts/seriesA/ep001_snip/input/Tenet-English-snippet.srt --end-sec 600
+uv run auto timeline --series-id seriesA --episode-id ep001_snip --subtitle artifacts/seriesA/ep001_snip/input/Tenet-English-snippet.srt
+uv run auto pipeline --video snippets/ep001_snip.mp4 --series-id seriesA --episode-id ep001_snip --subtitle artifacts/seriesA/ep001_snip/input/Tenet-English-snippet.srt
 ls -la artifacts/seriesA/ep001_snip/scenes
 find artifacts/seriesA/ep001_snip/scenes -maxdepth 5 -type f -iname "*merged*" -print
 find artifacts/seriesA/ep001_snip/scenes -maxdepth 5 -type f \\( -iname "*.jpg" -o -iname "*.png" -o -iname "*.webp" \\) | head
@@ -249,12 +333,19 @@ Example `.env`:
 ARTIFACTS_DIR=artifacts
 LOG_LEVEL=INFO
 TEST_VIDEO=snippets/ep001_snip.mp4
+CHUNK_TARGET_SEC=600 # prod: 1800
+CHUNK_TOLERANCE_SEC=60 # prod: 120
+SUBTITLE_OFFSET_MS=0
+SUBTITLE_TRIM_START_SEC=0
+SUBTITLE_TRIM_END_SEC=600 # prod: unset
 ```
 
 Notes:
 * `ARTIFACTS_DIR` and `LOG_LEVEL` override `config.yaml`.
 * `TEST_VIDEO` (or `AUTOS_TEST_VIDEO`) is used by tests automatically.
 * You can also use `AUTOS_ARTIFACTS_DIR` / `AUTOS_LOG_LEVEL` in `.env` if you prefer.
+* Chunking overrides: `CHUNK_TARGET_SEC`, `CHUNK_TOLERANCE_SEC` (or `AUTOS_`-prefixed).
+* Subtitle overrides: `SUBTITLE_OFFSET_MS`, `SUBTITLE_TRIM_START_SEC`, `SUBTITLE_TRIM_END_SEC` (or `AUTOS_`-prefixed).
 
 ---
 
@@ -382,7 +473,11 @@ Use `AUTOS_LOG_LEVEL=DEBUG` while developing each stage.
 | Initialize episode          | `uv run auto init --episode-id ep001 --series-id seriesA`                                   |
 | Scene detect                | `uv run auto scene-detect --video path/to/video.mp4 --series-id seriesA --episode-id ep001` |
 | Scene merge + thumbs        | `uv run auto scene-merge --series-id seriesA --episode-id ep001 --merged-thumbs --video path/to/video.mp4` |
-| Scene pipeline              | `uv run auto scene-pipeline --video path/to/video.mp4 --series-id seriesA --episode-id ep001 --thumbs --merged-thumbs` |
+| Pipeline (detect+merge+chunk) | `uv run auto pipeline --video path/to/video.mp4 --series-id seriesA --episode-id ep001 --thumbs --merged-thumbs` |
+| Chunk scenes                | `uv run auto chunk --series-id seriesA --episode-id ep001`                                  |
+| Chunk summary               | `uv run auto chunk-summary --series-id seriesA --episode-id ep001`                          |
+| Subtitles trim              | `uv run auto subtitles-trim --input path/to/full.srt --output artifacts/seriesA/ep001/input/episode.srt --end-sec 600` |
+| Timeline build              | `uv run auto timeline --series-id seriesA --episode-id ep001 --subtitle artifacts/seriesA/ep001/input/episode.srt` |
 | Run tests                   | `TEST_VIDEO=path/to/video.mp4 uv run pytest`                                                 |
 | View help                   | `uv run auto --help`                                                                        |
 | Run a stage directly        | `uv run python -m autos.cli <command>`                                                      |

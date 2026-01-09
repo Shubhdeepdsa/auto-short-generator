@@ -14,7 +14,12 @@ class YamlConfig(BaseModel):
 
     logging: Dict[str, Any] = Field(default_factory=lambda: {"level": "INFO"})
     scene: Dict[str, Any] = Field(default_factory=dict)
-    chunking: Dict[str, Any] = Field(default_factory=dict)
+    subtitles: Dict[str, Any] = Field(
+        default_factory=lambda: {"offset_ms": 0, "trim_start_sec": 0.0, "trim_end_sec": None}
+    )
+    chunking: Dict[str, Any] = Field(
+        default_factory=lambda: {"target_sec": 1800, "tolerance_sec": 120}
+    )
 
 
 class EnvOverrides(BaseSettings):
@@ -26,6 +31,11 @@ class EnvOverrides(BaseSettings):
 
     ARTIFACTS_DIR: Optional[str] = None
     LOG_LEVEL: Optional[str] = None
+    CHUNK_TARGET_SEC: Optional[float] = None
+    CHUNK_TOLERANCE_SEC: Optional[float] = None
+    SUBTITLE_OFFSET_MS: Optional[int] = None
+    SUBTITLE_TRIM_START_SEC: Optional[float] = None
+    SUBTITLE_TRIM_END_SEC: Optional[float] = None
 
 
 def load_dotenv(path: Path) -> Dict[str, str]:
@@ -43,19 +53,51 @@ def load_dotenv(path: Path) -> Dict[str, str]:
             continue
         key, value = line.split("=", 1)
         key = key.strip()
-        value = value.strip().strip('"').strip("'")
+        value = value.strip()
+        if value and value[0] in {'"', "'"}:
+            value = value.strip().strip('"').strip("'")
+        else:
+            if " #" in value or "\t#" in value:
+                value = value.split("#", 1)[0].rstrip()
+            value = value.strip().strip('"').strip("'")
         data[key] = value
     return data
 
 
 def _apply_dotenv(cfg: YamlConfig, data: Dict[str, str]) -> None:
-    artifacts_dir = data.get("ARTIFACTS_DIR") or data.get("AUTOS_ARTIFACTS_DIR")
-    if artifacts_dir:
+    def _get_value(*keys: str) -> str | None:
+        for key in keys:
+            if key in data and data[key] != "":
+                return data[key]
+        return None
+
+    artifacts_dir = _get_value("ARTIFACTS_DIR", "AUTOS_ARTIFACTS_DIR")
+    if artifacts_dir is not None:
         cfg.artifacts_dir = artifacts_dir
 
-    log_level = data.get("LOG_LEVEL") or data.get("AUTOS_LOG_LEVEL")
-    if log_level:
+    log_level = _get_value("LOG_LEVEL", "AUTOS_LOG_LEVEL")
+    if log_level is not None:
         cfg.logging["level"] = log_level
+
+    target_sec = _get_value("CHUNK_TARGET_SEC", "AUTOS_CHUNK_TARGET_SEC")
+    if target_sec is not None:
+        cfg.chunking["target_sec"] = float(target_sec)
+
+    tolerance_sec = _get_value("CHUNK_TOLERANCE_SEC", "AUTOS_CHUNK_TOLERANCE_SEC")
+    if tolerance_sec is not None:
+        cfg.chunking["tolerance_sec"] = float(tolerance_sec)
+
+    subtitle_offset = _get_value("SUBTITLE_OFFSET_MS", "AUTOS_SUBTITLE_OFFSET_MS")
+    if subtitle_offset is not None:
+        cfg.subtitles["offset_ms"] = int(float(subtitle_offset))
+
+    subtitle_start = _get_value("SUBTITLE_TRIM_START_SEC", "AUTOS_SUBTITLE_TRIM_START_SEC")
+    if subtitle_start is not None:
+        cfg.subtitles["trim_start_sec"] = float(subtitle_start)
+
+    subtitle_end = _get_value("SUBTITLE_TRIM_END_SEC", "AUTOS_SUBTITLE_TRIM_END_SEC")
+    if subtitle_end is not None:
+        cfg.subtitles["trim_end_sec"] = float(subtitle_end)
 
 
 def load_config(config_path: str | Path = "config.yaml") -> YamlConfig:
@@ -85,5 +127,20 @@ def load_config(config_path: str | Path = "config.yaml") -> YamlConfig:
 
     if env.LOG_LEVEL:
         cfg.logging["level"] = env.LOG_LEVEL
+
+    if env.CHUNK_TARGET_SEC is not None:
+        cfg.chunking["target_sec"] = float(env.CHUNK_TARGET_SEC)
+
+    if env.CHUNK_TOLERANCE_SEC is not None:
+        cfg.chunking["tolerance_sec"] = float(env.CHUNK_TOLERANCE_SEC)
+
+    if env.SUBTITLE_OFFSET_MS is not None:
+        cfg.subtitles["offset_ms"] = int(env.SUBTITLE_OFFSET_MS)
+
+    if env.SUBTITLE_TRIM_START_SEC is not None:
+        cfg.subtitles["trim_start_sec"] = float(env.SUBTITLE_TRIM_START_SEC)
+
+    if env.SUBTITLE_TRIM_END_SEC is not None:
+        cfg.subtitles["trim_end_sec"] = float(env.SUBTITLE_TRIM_END_SEC)
 
     return cfg

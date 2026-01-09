@@ -12,3 +12,4 @@ artifacts/
 snippets/
 .env
 .env.local
+og_test_files/

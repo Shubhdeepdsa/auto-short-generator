@@ -8,6 +8,20 @@ scene:
   # we’ll use later
   min_scene_sec: 1.5
 
+subtitles:
+  # Subtitle timing offset in milliseconds (positive or negative).
+  offset_ms: 0
+  # Optional trim window for dev snippets.
+  # For 10 min dev clips, override in .env:
+  # SUBTITLE_TRIM_START_SEC=0
+  # SUBTITLE_TRIM_END_SEC=600
+  trim_start_sec: 0
+  trim_end_sec: null
+
 chunking:
+  # Prod defaults (30 min target, 2 min tolerance).
+  # For dev snippets, override in .env:
+  # CHUNK_TARGET_SEC=600  # 10 min
+  # CHUNK_TOLERANCE_SEC=60
   target_sec: 1800
   tolerance_sec: 120
