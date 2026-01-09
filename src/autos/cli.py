@@ -14,6 +14,7 @@ from autos.scene_detect import run_scene_detect
 from autos.scene_merge import run_scene_merge
 from autos.scene_thumbs import export_scene_thumbnails_from_json
 from autos.subtitles import run_timeline_base, trim_srt
+from autos.vision import run_vision_captions, run_vision_titles
 
 app = typer.Typer(help="Auto-Shorts Generator CLI (project bootstrap + pipeline stages).")
 
@@ -215,6 +216,7 @@ def pipeline(
     ),
     frames_format: str | None = typer.Option(None, "--frames-format", help="Image format (jpg|png)"),
     frames_quality: int | None = typer.Option(None, "--frames-quality", help="jpg:2-31, png:0-9"),
+    vision: bool = typer.Option(False, "--vision/--no-vision", help="Run vision captions + titles"),
 ):
     """
     Run scene detection + merge + chunking in a single command.
@@ -274,6 +276,9 @@ def pipeline(
         tolerance_sec=tolerance,
     )
 
+    if vision and not frames:
+        raise typer.BadParameter("--vision requires frames. Remove --no-frames or run extract-frames first.")
+
     frames_root: Path | None = None
     if frames:
         sample_points = (
@@ -303,6 +308,38 @@ def pipeline(
             quality=int(quality),
         )
 
+    vision_root: Path | None = None
+    if vision:
+        caption_model = cfg.vision.get("caption_model")
+        title_model = str(cfg.vision.get("title_model", "")).strip() or None
+        device_name = cfg.vision.get("device", "auto")
+        batch = int(cfg.vision.get("batch_size", 4))
+        max_words_val = int(cfg.vision.get("title_max_words", 8))
+        temperature_val = float(cfg.vision.get("title_temperature", 0.0))
+
+        vision_root = run_vision_captions(
+            artifacts_root=cfg.artifacts_dir,
+            series_id=series_id,
+            episode_id=episode_id,
+            model_name=str(caption_model),
+            device=str(device_name),
+            batch_size=batch,
+            overwrite=False,
+            show_progress=True,
+        )
+        run_vision_titles(
+            artifacts_root=cfg.artifacts_dir,
+            series_id=series_id,
+            episode_id=episode_id,
+            model_name=title_model,
+            device=str(device_name),
+            max_words=max_words_val,
+            temperature=temperature_val,
+            batch_size=batch,
+            overwrite=False,
+            show_progress=True,
+        )
+
     timeline_path: Path | None = None
     if subtitle_path is not None:
         offset = (
@@ -326,6 +363,8 @@ def pipeline(
     typer.echo(f"Chunks → {chunks_path}")
     if frames_root is not None:
         typer.echo(f"Frames → {frames_root}")
+    if vision_root is not None:
+        typer.echo(f"Vision → {vision_root}")
     if timeline_path is not None:
         typer.echo(f"Timeline → {timeline_path}")
     if thumbs:
@@ -451,6 +490,144 @@ def frames_summary(
     typer.echo(f"Frames → {frames_root}")
     for line in format_frames_summary(frames_root):
         typer.echo(line)
+
+
+@app.command("vision-captions")
+def vision_captions(
+    series_id: str = typer.Option(..., "--series-id", "-s"),
+    episode_id: str = typer.Option(..., "--episode-id", "-e"),
+    config_path: Path = typer.Option(Path("config.yaml"), "--config", help="Path to config.yaml"),
+    model: str | None = typer.Option(None, "--model", help="Image caption model name"),
+    device: str | None = typer.Option(None, "--device", help="Device: auto|cpu|cuda|mps"),
+    batch_size: int | None = typer.Option(None, "--batch-size", help="Caption batch size"),
+    overwrite: bool = typer.Option(False, "--overwrite", help="Overwrite existing captions"),
+    progress: bool = typer.Option(True, "--progress/--no-progress", help="Show progress bar"),
+):
+    """
+    Generate per-scene captions from extracted frames.
+    """
+    cfg = load_config(config_path)
+    setup_logging(cfg.logging.get("level", "INFO"))
+
+    model_name = model if model is not None else cfg.vision.get("caption_model")
+    device_name = device if device is not None else cfg.vision.get("device", "auto")
+    batch = batch_size if batch_size is not None else int(cfg.vision.get("batch_size", 4))
+
+    out_root = run_vision_captions(
+        artifacts_root=cfg.artifacts_dir,
+        series_id=series_id,
+        episode_id=episode_id,
+        model_name=str(model_name),
+        device=str(device_name),
+        batch_size=int(batch),
+        overwrite=overwrite,
+        show_progress=progress,
+    )
+
+    typer.echo("✅ Vision captions done.")
+    typer.echo(f"Vision → {out_root}")
+
+
+@app.command("vision-titles")
+def vision_titles(
+    series_id: str = typer.Option(..., "--series-id", "-s"),
+    episode_id: str = typer.Option(..., "--episode-id", "-e"),
+    config_path: Path = typer.Option(Path("config.yaml"), "--config", help="Path to config.yaml"),
+    model: str | None = typer.Option(None, "--model", help="Optional title model name"),
+    device: str | None = typer.Option(None, "--device", help="Device: auto|cpu|cuda|mps"),
+    batch_size: int | None = typer.Option(None, "--batch-size", help="Title batch size"),
+    max_words: int | None = typer.Option(None, "--max-words", help="Max words in title"),
+    temperature: float | None = typer.Option(None, "--temperature", help="Title temperature"),
+    overwrite: bool = typer.Option(False, "--overwrite", help="Overwrite existing titles"),
+    progress: bool = typer.Option(True, "--progress/--no-progress", help="Show progress bar"),
+):
+    """
+    Generate per-scene titles from captions.
+    """
+    cfg = load_config(config_path)
+    setup_logging(cfg.logging.get("level", "INFO"))
+
+    model_name = model if model is not None else cfg.vision.get("title_model", "")
+    model_name = str(model_name).strip() or None
+    device_name = device if device is not None else cfg.vision.get("device", "auto")
+    batch = batch_size if batch_size is not None else int(cfg.vision.get("batch_size", 4))
+    max_words_val = max_words if max_words is not None else int(cfg.vision.get("title_max_words", 8))
+    temperature_val = (
+        temperature if temperature is not None else float(cfg.vision.get("title_temperature", 0.0))
+    )
+
+    out_root = run_vision_titles(
+        artifacts_root=cfg.artifacts_dir,
+        series_id=series_id,
+        episode_id=episode_id,
+        model_name=model_name,
+        device=str(device_name),
+        max_words=int(max_words_val),
+        temperature=float(temperature_val),
+        batch_size=int(batch),
+        overwrite=overwrite,
+        show_progress=progress,
+    )
+
+    typer.echo("✅ Vision titles done.")
+    typer.echo(f"Vision → {out_root}")
+
+
+@app.command("vision")
+def vision(
+    series_id: str = typer.Option(..., "--series-id", "-s"),
+    episode_id: str = typer.Option(..., "--episode-id", "-e"),
+    config_path: Path = typer.Option(Path("config.yaml"), "--config", help="Path to config.yaml"),
+    caption_model: str | None = typer.Option(None, "--caption-model", help="Image caption model name"),
+    title_model: str | None = typer.Option(None, "--title-model", help="Optional title model name"),
+    device: str | None = typer.Option(None, "--device", help="Device: auto|cpu|cuda|mps"),
+    batch_size: int | None = typer.Option(None, "--batch-size", help="Caption/title batch size"),
+    max_words: int | None = typer.Option(None, "--max-words", help="Max words in title"),
+    temperature: float | None = typer.Option(None, "--temperature", help="Title temperature"),
+    overwrite: bool = typer.Option(False, "--overwrite", help="Overwrite existing outputs"),
+    progress: bool = typer.Option(True, "--progress/--no-progress", help="Show progress bar"),
+):
+    """
+    Run captions + titles in a single step.
+    """
+    cfg = load_config(config_path)
+    setup_logging(cfg.logging.get("level", "INFO"))
+
+    caption_model_name = caption_model if caption_model is not None else cfg.vision.get("caption_model")
+    title_model_name = title_model if title_model is not None else cfg.vision.get("title_model", "")
+    title_model_name = str(title_model_name).strip() or None
+    device_name = device if device is not None else cfg.vision.get("device", "auto")
+    batch = batch_size if batch_size is not None else int(cfg.vision.get("batch_size", 4))
+    max_words_val = max_words if max_words is not None else int(cfg.vision.get("title_max_words", 8))
+    temperature_val = (
+        temperature if temperature is not None else float(cfg.vision.get("title_temperature", 0.0))
+    )
+
+    out_root = run_vision_captions(
+        artifacts_root=cfg.artifacts_dir,
+        series_id=series_id,
+        episode_id=episode_id,
+        model_name=str(caption_model_name),
+        device=str(device_name),
+        batch_size=int(batch),
+        overwrite=overwrite,
+        show_progress=progress,
+    )
+    run_vision_titles(
+        artifacts_root=cfg.artifacts_dir,
+        series_id=series_id,
+        episode_id=episode_id,
+        model_name=title_model_name,
+        device=str(device_name),
+        max_words=int(max_words_val),
+        temperature=float(temperature_val),
+        batch_size=int(batch),
+        overwrite=overwrite,
+        show_progress=progress,
+    )
+
+    typer.echo("✅ Vision captions + titles done.")
+    typer.echo(f"Vision → {out_root}")
 
 
 @app.command("subtitles-trim")

@@ -152,6 +152,14 @@ Disable frame extraction:
 uv run auto pipeline --video path/to/video.mp4 --series-id seriesA --episode-id ep001 --no-frames
 ```
 
+Run vision captions + titles (requires vision deps):
+
+```bash
+uv run auto pipeline --video path/to/video.mp4 --series-id seriesA --episode-id ep001 --vision
+```
+
+Note: `--vision` requires frames (default is on). If you use `--no-frames`, run `auto extract-frames` first.
+
 Only scene stages (no chunking):
 
 ```bash
@@ -201,6 +209,40 @@ uv run auto frames-summary --series-id seriesA --episode-id ep001
 ```
 
 Prints a per-scene frame count plus a total.
+
+---
+
+### 🧠 Vision (captions + titles)
+
+Install vision dependencies:
+
+```bash
+uv sync --extra vision
+```
+
+Generate captions only:
+
+```bash
+uv run auto vision-captions --series-id seriesA --episode-id ep001
+```
+
+Generate titles (heuristic by default):
+
+```bash
+uv run auto vision-titles --series-id seriesA --episode-id ep001
+```
+
+Run captions + titles together:
+
+```bash
+uv run auto vision --series-id seriesA --episode-id ep001
+```
+
+Disable progress bars:
+
+```bash
+uv run auto vision --series-id seriesA --episode-id ep001 --no-progress
+```
 
 ---
 
@@ -263,6 +305,7 @@ uv run auto frames-summary --series-id seriesA --episode-id ep001_snip
 uv run auto subtitles-trim --input og_test_files/Tenet-English.srt --output artifacts/seriesA/ep001_snip/input/Tenet-English-snippet.srt --end-sec 600
 uv run auto timeline --series-id seriesA --episode-id ep001_snip --subtitle artifacts/seriesA/ep001_snip/input/Tenet-English-snippet.srt
 uv run auto pipeline --video snippets/ep001_snip.mp4 --series-id seriesA --episode-id ep001_snip --subtitle artifacts/seriesA/ep001_snip/input/Tenet-English-snippet.srt
+uv run auto vision --series-id seriesA --episode-id ep001_snip
 ls -la artifacts/seriesA/ep001_snip/scenes
 find artifacts/seriesA/ep001_snip/scenes -maxdepth 5 -type f -iname "*merged*" -print
 find artifacts/seriesA/ep001_snip/scenes -maxdepth 5 -type f \\( -iname "*.jpg" -o -iname "*.png" -o -iname "*.webp" \\) | head
@@ -382,6 +425,7 @@ Notes:
 * Chunking overrides: `CHUNK_TARGET_SEC`, `CHUNK_TOLERANCE_SEC` (or `AUTOS_`-prefixed).
 * Subtitle overrides: `SUBTITLE_OFFSET_MS`, `SUBTITLE_TRIM_START_SEC`, `SUBTITLE_TRIM_END_SEC` (or `AUTOS_`-prefixed).
 * Frames overrides: `FRAMES_SAMPLE_POINTS`, `FRAMES_MIN_SCENE_SEC`, `FRAMES_FORMAT`, `FRAMES_QUALITY` (or `AUTOS_`-prefixed).
+* Vision overrides: `VISION_CAPTION_MODEL`, `VISION_TITLE_MODEL`, `VISION_DEVICE`, `VISION_BATCH_SIZE`, `VISION_TITLE_MAX_WORDS`, `VISION_TITLE_TEMPERATURE` (or `AUTOS_`-prefixed).
 
 ---
 
@@ -506,6 +550,7 @@ Use `AUTOS_LOG_LEVEL=DEBUG` while developing each stage.
 | Bootstrap project           | `uv init --app`                                                                             |
 | Install deps + CLI          | `uv sync`                                                                                   |
 | Install dev deps (tests)    | `uv sync --extra dev`                                                                       |
+| Install vision deps         | `uv sync --extra vision`                                                                    |
 | Initialize episode          | `uv run auto init --episode-id ep001 --series-id seriesA`                                   |
 | Scene detect                | `uv run auto scene-detect --video path/to/video.mp4 --series-id seriesA --episode-id ep001` |
 | Scene merge + thumbs        | `uv run auto scene-merge --series-id seriesA --episode-id ep001 --merged-thumbs --video path/to/video.mp4` |
@@ -514,6 +559,7 @@ Use `AUTOS_LOG_LEVEL=DEBUG` while developing each stage.
 | Chunk summary               | `uv run auto chunk-summary --series-id seriesA --episode-id ep001`                          |
 | Extract frames              | `uv run auto extract-frames --video path/to/video.mp4 --series-id seriesA --episode-id ep001` |
 | Frames summary              | `uv run auto frames-summary --series-id seriesA --episode-id ep001`                         |
+| Vision (captions+titles)    | `uv run auto vision --series-id seriesA --episode-id ep001`                                 |
 | Subtitles trim              | `uv run auto subtitles-trim --input path/to/full.srt --output artifacts/seriesA/ep001/input/episode.srt --end-sec 600` |
 | Timeline build              | `uv run auto timeline --series-id seriesA --episode-id ep001 --subtitle artifacts/seriesA/ep001/input/episode.srt` |
 | Run tests                   | `TEST_VIDEO=path/to/video.mp4 uv run pytest`                                                 |

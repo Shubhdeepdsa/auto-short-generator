@@ -40,7 +40,14 @@ uv run auto pipeline \
   --subtitle artifacts/seriesA/ep001_snip/input/Tenet-English-snippet.srt
 ```
 
-## 4) Quick checks
+## 4) Generate vision captions + titles (optional)
+
+```bash
+uv sync --extra vision
+uv run auto vision --series-id seriesA --episode-id ep001_snip
+```
+
+## 5) Quick checks
 
 ```bash
 ls -la artifacts/seriesA/ep001_snip/scenes

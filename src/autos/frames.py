@@ -21,6 +21,9 @@ class FrameSample:
 
 
 def _parse_sample_points(raw: Iterable[float]) -> List[float]:
+    """
+    Normalize and sort sample points into [0, 1] range.
+    """
     points = [float(p) for p in raw]
     points = [p for p in points if 0.0 <= p <= 1.0]
     if not points:
@@ -81,6 +84,9 @@ def _build_ffmpeg_cmd(
     image_format: str,
     quality: int,
 ) -> List[str]:
+    """
+    Build the ffmpeg command for single-frame extraction.
+    """
     cmd = [
         "ffmpeg",
         "-y",

@@ -25,6 +25,16 @@ class YamlConfig(BaseModel):
             "quality": 2,
         }
     )
+    vision: Dict[str, Any] = Field(
+        default_factory=lambda: {
+            "caption_model": "Salesforce/blip-image-captioning-base",
+            "title_model": "",
+            "device": "auto",
+            "batch_size": 4,
+            "title_max_words": 8,
+            "title_temperature": 0.0,
+        }
+    )
     chunking: Dict[str, Any] = Field(
         default_factory=lambda: {"target_sec": 1800, "tolerance_sec": 120}
     )
@@ -48,6 +58,12 @@ class EnvOverrides(BaseSettings):
     FRAMES_MIN_SCENE_SEC: Optional[float] = None
     FRAMES_FORMAT: Optional[str] = None
     FRAMES_QUALITY: Optional[int] = None
+    VISION_CAPTION_MODEL: Optional[str] = None
+    VISION_TITLE_MODEL: Optional[str] = None
+    VISION_DEVICE: Optional[str] = None
+    VISION_BATCH_SIZE: Optional[int] = None
+    VISION_TITLE_MAX_WORDS: Optional[int] = None
+    VISION_TITLE_TEMPERATURE: Optional[float] = None
 
 
 def load_dotenv(path: Path) -> Dict[str, str]:
@@ -131,6 +147,30 @@ def _apply_dotenv(cfg: YamlConfig, data: Dict[str, str]) -> None:
     if frames_quality is not None:
         cfg.frames["quality"] = int(float(frames_quality))
 
+    vision_caption_model = _get_value("VISION_CAPTION_MODEL", "AUTOS_VISION_CAPTION_MODEL")
+    if vision_caption_model is not None:
+        cfg.vision["caption_model"] = vision_caption_model
+
+    vision_title_model = _get_value("VISION_TITLE_MODEL", "AUTOS_VISION_TITLE_MODEL")
+    if vision_title_model is not None:
+        cfg.vision["title_model"] = vision_title_model
+
+    vision_device = _get_value("VISION_DEVICE", "AUTOS_VISION_DEVICE")
+    if vision_device is not None:
+        cfg.vision["device"] = vision_device
+
+    vision_batch = _get_value("VISION_BATCH_SIZE", "AUTOS_VISION_BATCH_SIZE")
+    if vision_batch is not None:
+        cfg.vision["batch_size"] = int(float(vision_batch))
+
+    vision_max_words = _get_value("VISION_TITLE_MAX_WORDS", "AUTOS_VISION_TITLE_MAX_WORDS")
+    if vision_max_words is not None:
+        cfg.vision["title_max_words"] = int(float(vision_max_words))
+
+    vision_temp = _get_value("VISION_TITLE_TEMPERATURE", "AUTOS_VISION_TITLE_TEMPERATURE")
+    if vision_temp is not None:
+        cfg.vision["title_temperature"] = float(vision_temp)
+
 
 def load_config(config_path: str | Path = "config.yaml") -> YamlConfig:
     p = Path(config_path)
@@ -190,5 +230,23 @@ def load_config(config_path: str | Path = "config.yaml") -> YamlConfig:
 
     if env.FRAMES_QUALITY is not None:
         cfg.frames["quality"] = int(env.FRAMES_QUALITY)
+
+    if env.VISION_CAPTION_MODEL is not None:
+        cfg.vision["caption_model"] = env.VISION_CAPTION_MODEL
+
+    if env.VISION_TITLE_MODEL is not None:
+        cfg.vision["title_model"] = env.VISION_TITLE_MODEL
+
+    if env.VISION_DEVICE is not None:
+        cfg.vision["device"] = env.VISION_DEVICE
+
+    if env.VISION_BATCH_SIZE is not None:
+        cfg.vision["batch_size"] = int(env.VISION_BATCH_SIZE)
+
+    if env.VISION_TITLE_MAX_WORDS is not None:
+        cfg.vision["title_max_words"] = int(env.VISION_TITLE_MAX_WORDS)
+
+    if env.VISION_TITLE_TEMPERATURE is not None:
+        cfg.vision["title_temperature"] = float(env.VISION_TITLE_TEMPERATURE)
 
     return cfg

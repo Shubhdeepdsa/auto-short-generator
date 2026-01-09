@@ -28,6 +28,20 @@ frames:
   # jpg: 2-31 (lower is higher quality); png: 0-9 (lower is higher quality).
   quality: 2
 
+vision:
+  # Caption model (image-to-text).
+  caption_model: "Salesforce/blip-image-captioning-base"
+  # Optional title model (text-to-text). Leave blank to use heuristic titles.
+  title_model: ""
+  # Device: auto, cpu, cuda, mps.
+  device: "auto"
+  # Caption/title batch size.
+  batch_size: 4
+  # Title max words (<= 8 recommended).
+  title_max_words: 8
+  # Title temperature (0 = deterministic).
+  title_temperature: 0.0
+
 chunking:
   # Prod defaults (30 min target, 2 min tolerance).
   # For dev snippets, override in .env:
