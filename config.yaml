@@ -18,6 +18,16 @@ subtitles:
   trim_start_sec: 0
   trim_end_sec: null
 
+frames:
+  # Default sample points (normalized positions inside a scene).
+  sample_points: [0.25, 0.5, 0.75]
+  # If a scene is shorter than this, extract only the midpoint.
+  min_scene_sec: 1.0
+  # Output image format: jpg or png.
+  format: "jpg"
+  # jpg: 2-31 (lower is higher quality); png: 0-9 (lower is higher quality).
+  quality: 2
+
 chunking:
   # Prod defaults (30 min target, 2 min tolerance).
   # For dev snippets, override in .env:

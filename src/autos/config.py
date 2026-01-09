@@ -17,6 +17,14 @@ class YamlConfig(BaseModel):
     subtitles: Dict[str, Any] = Field(
         default_factory=lambda: {"offset_ms": 0, "trim_start_sec": 0.0, "trim_end_sec": None}
     )
+    frames: Dict[str, Any] = Field(
+        default_factory=lambda: {
+            "sample_points": [0.25, 0.5, 0.75],
+            "min_scene_sec": 1.0,
+            "format": "jpg",
+            "quality": 2,
+        }
+    )
     chunking: Dict[str, Any] = Field(
         default_factory=lambda: {"target_sec": 1800, "tolerance_sec": 120}
     )
@@ -36,6 +44,10 @@ class EnvOverrides(BaseSettings):
     SUBTITLE_OFFSET_MS: Optional[int] = None
     SUBTITLE_TRIM_START_SEC: Optional[float] = None
     SUBTITLE_TRIM_END_SEC: Optional[float] = None
+    FRAMES_SAMPLE_POINTS: Optional[str] = None
+    FRAMES_MIN_SCENE_SEC: Optional[float] = None
+    FRAMES_FORMAT: Optional[str] = None
+    FRAMES_QUALITY: Optional[int] = None
 
 
 def load_dotenv(path: Path) -> Dict[str, str]:
@@ -99,6 +111,26 @@ def _apply_dotenv(cfg: YamlConfig, data: Dict[str, str]) -> None:
     if subtitle_end is not None:
         cfg.subtitles["trim_end_sec"] = float(subtitle_end)
 
+    frames_points = _get_value("FRAMES_SAMPLE_POINTS", "AUTOS_FRAMES_SAMPLE_POINTS")
+    if frames_points is not None:
+        cfg.frames["sample_points"] = [
+            float(p.strip())
+            for p in frames_points.split(",")
+            if p.strip() != ""
+        ]
+
+    frames_min = _get_value("FRAMES_MIN_SCENE_SEC", "AUTOS_FRAMES_MIN_SCENE_SEC")
+    if frames_min is not None:
+        cfg.frames["min_scene_sec"] = float(frames_min)
+
+    frames_fmt = _get_value("FRAMES_FORMAT", "AUTOS_FRAMES_FORMAT")
+    if frames_fmt is not None:
+        cfg.frames["format"] = frames_fmt
+
+    frames_quality = _get_value("FRAMES_QUALITY", "AUTOS_FRAMES_QUALITY")
+    if frames_quality is not None:
+        cfg.frames["quality"] = int(float(frames_quality))
+
 
 def load_config(config_path: str | Path = "config.yaml") -> YamlConfig:
     p = Path(config_path)
@@ -142,5 +174,21 @@ def load_config(config_path: str | Path = "config.yaml") -> YamlConfig:
 
     if env.SUBTITLE_TRIM_END_SEC is not None:
         cfg.subtitles["trim_end_sec"] = float(env.SUBTITLE_TRIM_END_SEC)
+
+    if env.FRAMES_SAMPLE_POINTS is not None:
+        cfg.frames["sample_points"] = [
+            float(p.strip())
+            for p in env.FRAMES_SAMPLE_POINTS.split(",")
+            if p.strip() != ""
+        ]
+
+    if env.FRAMES_MIN_SCENE_SEC is not None:
+        cfg.frames["min_scene_sec"] = float(env.FRAMES_MIN_SCENE_SEC)
+
+    if env.FRAMES_FORMAT is not None:
+        cfg.frames["format"] = env.FRAMES_FORMAT
+
+    if env.FRAMES_QUALITY is not None:
+        cfg.frames["quality"] = int(env.FRAMES_QUALITY)
 
     return cfg

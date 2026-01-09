@@ -46,7 +46,9 @@ uv run auto pipeline \
 ls -la artifacts/seriesA/ep001_snip/scenes
 ls -la artifacts/seriesA/ep001_snip/chunks
 ls -la artifacts/seriesA/ep001_snip/timeline
+ls -la artifacts/seriesA/ep001_snip/frames
 uv run auto chunk-summary --series-id seriesA --episode-id ep001_snip
+uv run auto frames-summary --series-id seriesA --episode-id ep001_snip
 ```
 
 ## Optional overrides (dev snippets)

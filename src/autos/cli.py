@@ -9,6 +9,7 @@ from autos.log import setup_logging
 from autos.paths import episode_dirs, ensure_episode_dirs
 from autos.run_meta import build_run_meta, write_run_meta
 from autos.chunker import format_chunk_summary, load_chunks, run_chunking
+from autos.frames import format_frames_summary, run_frame_extraction
 from autos.scene_detect import run_scene_detect
 from autos.scene_merge import run_scene_merge
 from autos.scene_thumbs import export_scene_thumbnails_from_json
@@ -205,6 +206,15 @@ def pipeline(
     subtitle_offset_ms: int | None = typer.Option(
         None, "--subtitle-offset-ms", help="Subtitle timing offset (ms)"
     ),
+    frames: bool = typer.Option(True, "--frames/--no-frames", help="Extract frames per scene"),
+    frames_sample_points: str | None = typer.Option(
+        None, "--frames-sample-points", help="Comma-separated sample points (e.g. 0.25,0.5,0.75)"
+    ),
+    frames_min_scene_sec: float | None = typer.Option(
+        None, "--frames-min-scene-sec", help="Min scene duration for multi-sampling"
+    ),
+    frames_format: str | None = typer.Option(None, "--frames-format", help="Image format (jpg|png)"),
+    frames_quality: int | None = typer.Option(None, "--frames-quality", help="jpg:2-31, png:0-9"),
 ):
     """
     Run scene detection + merge + chunking in a single command.
@@ -264,6 +274,35 @@ def pipeline(
         tolerance_sec=tolerance,
     )
 
+    frames_root: Path | None = None
+    if frames:
+        sample_points = (
+            [float(p.strip()) for p in frames_sample_points.split(",") if p.strip() != ""]
+            if frames_sample_points is not None
+            else cfg.frames.get("sample_points", [0.25, 0.5, 0.75])
+        )
+        min_scene = (
+            frames_min_scene_sec
+            if frames_min_scene_sec is not None
+            else float(cfg.frames.get("min_scene_sec", 1.0))
+        )
+        fmt = frames_format if frames_format is not None else cfg.frames.get("format", "jpg")
+        quality = (
+            frames_quality
+            if frames_quality is not None
+            else int(cfg.frames.get("quality", 2))
+        )
+        frames_root = run_frame_extraction(
+            artifacts_root=cfg.artifacts_dir,
+            series_id=series_id,
+            episode_id=episode_id,
+            video=video,
+            sample_points=sample_points,
+            min_scene_sec=min_scene,
+            image_format=str(fmt),
+            quality=int(quality),
+        )
+
     timeline_path: Path | None = None
     if subtitle_path is not None:
         offset = (
@@ -285,6 +324,8 @@ def pipeline(
     typer.echo(f"Merged JSON → {merged_json}")
     typer.echo(f"Merged CSV → {merged_csv}")
     typer.echo(f"Chunks → {chunks_path}")
+    if frames_root is not None:
+        typer.echo(f"Frames → {frames_root}")
     if timeline_path is not None:
         typer.echo(f"Timeline → {timeline_path}")
     if thumbs:
@@ -346,6 +387,69 @@ def chunk_summary(
     chunks = load_chunks(chunks_path)
     typer.echo(f"Chunks → {chunks_path}")
     for line in format_chunk_summary(chunks):
+        typer.echo(line)
+
+
+@app.command("extract-frames")
+def extract_frames(
+    series_id: str = typer.Option(..., "--series-id", "-s"),
+    episode_id: str = typer.Option(..., "--episode-id", "-e"),
+    video: Path = typer.Option(..., "--video", "-v", help="Path to input video"),
+    config_path: Path = typer.Option(Path("config.yaml"), "--config", help="Path to config.yaml"),
+    sample_points: str | None = typer.Option(
+        None, "--sample-points", help="Comma-separated sample points (e.g. 0.25,0.5,0.75)"
+    ),
+    min_scene_sec: float | None = typer.Option(
+        None, "--min-scene-sec", help="Min scene duration for multi-sampling"
+    ),
+    image_format: str | None = typer.Option(None, "--format", help="Image format (jpg|png)"),
+    quality: int | None = typer.Option(None, "--quality", help="jpg:2-31, png:0-9"),
+):
+    """
+    Extract sample frames per scene into artifacts/<series>/<episode>/frames/.
+    """
+    cfg = load_config(config_path)
+    setup_logging(cfg.logging.get("level", "INFO"))
+
+    points = (
+        [float(p.strip()) for p in sample_points.split(",") if p.strip() != ""]
+        if sample_points is not None
+        else cfg.frames.get("sample_points", [0.25, 0.5, 0.75])
+    )
+    min_scene = min_scene_sec if min_scene_sec is not None else float(cfg.frames.get("min_scene_sec", 1.0))
+    fmt = image_format if image_format is not None else cfg.frames.get("format", "jpg")
+    q = quality if quality is not None else int(cfg.frames.get("quality", 2))
+
+    frames_root = run_frame_extraction(
+        artifacts_root=cfg.artifacts_dir,
+        series_id=series_id,
+        episode_id=episode_id,
+        video=video,
+        sample_points=points,
+        min_scene_sec=min_scene,
+        image_format=str(fmt),
+        quality=int(q),
+    )
+
+    typer.echo("✅ Frame extraction done.")
+    typer.echo(f"Frames → {frames_root}")
+
+
+@app.command("frames-summary")
+def frames_summary(
+    series_id: str = typer.Option(..., "--series-id", "-s"),
+    episode_id: str = typer.Option(..., "--episode-id", "-e"),
+    config_path: Path = typer.Option(Path("config.yaml"), "--config", help="Path to config.yaml"),
+):
+    """
+    Print a summary of extracted frames per scene.
+    """
+    cfg = load_config(config_path)
+    setup_logging(cfg.logging.get("level", "INFO"))
+
+    frames_root = episode_dirs(cfg.artifacts_dir, episode_id, series_id)["frames"]
+    typer.echo(f"Frames → {frames_root}")
+    for line in format_frames_summary(frames_root):
         typer.echo(line)
 
 

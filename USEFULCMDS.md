@@ -126,13 +126,13 @@ uv run auto scene-merge --series-id seriesA --episode-id ep001 --merged-thumbs -
 
 ---
 
-### 🚀 Pipeline (detect + merge + chunk)
+### 🚀 Pipeline (detect + merge + chunk + frames)
 
 ```bash
 uv run auto pipeline --video path/to/video.mp4 --series-id seriesA --episode-id ep001 --thumbs --merged-thumbs
 ```
 
-Runs detect + merge + chunk in one call and writes raw/merged/chunks outputs (and thumbs if enabled).
+Runs detect + merge + chunk + frame sampling in one call and writes raw/merged/chunks/frames outputs (and thumbs if enabled).
 
 Include subtitles to build timeline in the same run:
 
@@ -144,6 +144,12 @@ Optional offset:
 
 ```bash
 uv run auto pipeline --video path/to/video.mp4 --series-id seriesA --episode-id ep001 --subtitle artifacts/seriesA/ep001/input/episode.srt --subtitle-offset-ms 250
+```
+
+Disable frame extraction:
+
+```bash
+uv run auto pipeline --video path/to/video.mp4 --series-id seriesA --episode-id ep001 --no-frames
 ```
 
 Only scene stages (no chunking):
@@ -168,6 +174,33 @@ uv run auto chunk --series-id seriesA --episode-id ep001 --target-sec 600 --tole
 
 Writes:
 * `artifacts/<series-id>/<episode-id>/chunks/chunks.json`
+
+---
+
+### 🖼 Frame Sampling (per scene)
+
+```bash
+uv run auto extract-frames --video path/to/video.mp4 --series-id seriesA --episode-id ep001
+```
+
+Override sample points and format:
+
+```bash
+uv run auto extract-frames --video path/to/video.mp4 --series-id seriesA --episode-id ep001 --sample-points 0.25,0.5,0.75 --format jpg --quality 2
+```
+
+Writes:
+* `artifacts/<series-id>/<episode-id>/frames/scene_0001/`
+
+---
+
+### 🧾 Frames Summary (quick view)
+
+```bash
+uv run auto frames-summary --series-id seriesA --episode-id ep001
+```
+
+Prints a per-scene frame count plus a total.
 
 ---
 
@@ -225,6 +258,8 @@ uv run auto pipeline --video snippets/ep001_snip.mp4 --series-id seriesA --episo
 uv run auto scene-merge --series-id seriesA --episode-id ep001_snip --merged-thumbs --video snippets/ep001_snip.mp4
 uv run auto chunk --series-id seriesA --episode-id ep001_snip --target-sec 600 --tolerance-sec 60
 uv run auto chunk-summary --series-id seriesA --episode-id ep001_snip
+uv run auto extract-frames --video snippets/ep001_snip.mp4 --series-id seriesA --episode-id ep001_snip
+uv run auto frames-summary --series-id seriesA --episode-id ep001_snip
 uv run auto subtitles-trim --input og_test_files/Tenet-English.srt --output artifacts/seriesA/ep001_snip/input/Tenet-English-snippet.srt --end-sec 600
 uv run auto timeline --series-id seriesA --episode-id ep001_snip --subtitle artifacts/seriesA/ep001_snip/input/Tenet-English-snippet.srt
 uv run auto pipeline --video snippets/ep001_snip.mp4 --series-id seriesA --episode-id ep001_snip --subtitle artifacts/seriesA/ep001_snip/input/Tenet-English-snippet.srt
@@ -346,6 +381,7 @@ Notes:
 * You can also use `AUTOS_ARTIFACTS_DIR` / `AUTOS_LOG_LEVEL` in `.env` if you prefer.
 * Chunking overrides: `CHUNK_TARGET_SEC`, `CHUNK_TOLERANCE_SEC` (or `AUTOS_`-prefixed).
 * Subtitle overrides: `SUBTITLE_OFFSET_MS`, `SUBTITLE_TRIM_START_SEC`, `SUBTITLE_TRIM_END_SEC` (or `AUTOS_`-prefixed).
+* Frames overrides: `FRAMES_SAMPLE_POINTS`, `FRAMES_MIN_SCENE_SEC`, `FRAMES_FORMAT`, `FRAMES_QUALITY` (or `AUTOS_`-prefixed).
 
 ---
 
@@ -473,9 +509,11 @@ Use `AUTOS_LOG_LEVEL=DEBUG` while developing each stage.
 | Initialize episode          | `uv run auto init --episode-id ep001 --series-id seriesA`                                   |
 | Scene detect                | `uv run auto scene-detect --video path/to/video.mp4 --series-id seriesA --episode-id ep001` |
 | Scene merge + thumbs        | `uv run auto scene-merge --series-id seriesA --episode-id ep001 --merged-thumbs --video path/to/video.mp4` |
-| Pipeline (detect+merge+chunk) | `uv run auto pipeline --video path/to/video.mp4 --series-id seriesA --episode-id ep001 --thumbs --merged-thumbs` |
+| Pipeline (detect+merge+chunk+frames) | `uv run auto pipeline --video path/to/video.mp4 --series-id seriesA --episode-id ep001 --thumbs --merged-thumbs` |
 | Chunk scenes                | `uv run auto chunk --series-id seriesA --episode-id ep001`                                  |
 | Chunk summary               | `uv run auto chunk-summary --series-id seriesA --episode-id ep001`                          |
+| Extract frames              | `uv run auto extract-frames --video path/to/video.mp4 --series-id seriesA --episode-id ep001` |
+| Frames summary              | `uv run auto frames-summary --series-id seriesA --episode-id ep001`                         |
 | Subtitles trim              | `uv run auto subtitles-trim --input path/to/full.srt --output artifacts/seriesA/ep001/input/episode.srt --end-sec 600` |
 | Timeline build              | `uv run auto timeline --series-id seriesA --episode-id ep001 --subtitle artifacts/seriesA/ep001/input/episode.srt` |
 | Run tests                   | `TEST_VIDEO=path/to/video.mp4 uv run pytest`                                                 |
