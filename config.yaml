@@ -42,6 +42,32 @@ vision:
   # Title temperature (0 = deterministic).
   title_temperature: 0.0
 
+scoring:
+  # Ollama model name (must be pulled locally).
+  model: "llama3.2:3b"
+  # Prompt templates and schema.
+  prompt_system_path: "prompts/score_system.txt"
+  prompt_user_path: "prompts/score_user.txt"
+  schema_path: "prompts/score_schema.json"
+  # Deterministic defaults.
+  temperature: 0.0
+  top_p: 1.0
+  top_k: 1
+  seed: 0
+  # Prompt size guards.
+  max_dialogue_chars: 800
+  max_caption_chars: 240
+  max_title_chars: 80
+  # Weights for total_score (computed in code).
+  weights:
+    hook: 1.0
+    clarity: 1.0
+    emotion: 1.0
+    action: 1.0
+    novelty: 1.0
+    dialogue: 1.0
+    visual: 1.0
+
 chunking:
   # Prod defaults (30 min target, 2 min tolerance).
   # For dev snippets, override in .env:

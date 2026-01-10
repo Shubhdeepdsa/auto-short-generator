@@ -1,0 +1,7 @@
+SCENE_INDEX: {scene_index}
+DURATION_SEC: {duration_sec}
+TITLE: {title}
+CAPTION: {caption}
+
+DIALOGUE (trimmed):
+{dialogue}

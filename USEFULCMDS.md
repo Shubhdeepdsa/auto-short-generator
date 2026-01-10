@@ -160,6 +160,12 @@ uv run auto pipeline --video path/to/video.mp4 --series-id seriesA --episode-id 
 
 Note: `--vision` requires frames (default is on). If you use `--no-frames`, run `auto extract-frames` first.
 
+Run scoring (requires Ollama + timeline):
+
+```bash
+uv run auto pipeline --video path/to/video.mp4 --series-id seriesA --episode-id ep001 --subtitle artifacts/seriesA/ep001/input/episode.srt --score
+```
+
 Only scene stages (no chunking):
 
 ```bash
@@ -246,6 +252,29 @@ uv run auto vision --series-id seriesA --episode-id ep001 --no-progress
 
 ---
 
+### 📊 Scoring (Ollama)
+
+Install and run Ollama (local):
+
+```bash
+ollama serve
+ollama pull llama3.2:3b
+```
+
+Score scenes:
+
+```bash
+uv run auto score-scenes --series-id seriesA --episode-id ep001
+```
+
+Requires `timeline_base.json` (run `auto timeline` first).
+
+Outputs:
+* `artifacts/<series-id>/<episode-id>/scores/scores.json`
+* `artifacts/<series-id>/<episode-id>/scores/scores.csv`
+
+---
+
 ### 📝 Subtitles Trim (dev snippets)
 
 Trim a full movie .srt down to a shorter window (e.g., first 10 minutes):
@@ -306,6 +335,7 @@ uv run auto subtitles-trim --input og_test_files/Tenet-English.srt --output arti
 uv run auto timeline --series-id seriesA --episode-id ep001_snip --subtitle artifacts/seriesA/ep001_snip/input/Tenet-English-snippet.srt
 uv run auto pipeline --video snippets/ep001_snip.mp4 --series-id seriesA --episode-id ep001_snip --subtitle artifacts/seriesA/ep001_snip/input/Tenet-English-snippet.srt
 uv run auto vision --series-id seriesA --episode-id ep001_snip
+uv run auto score-scenes --series-id seriesA --episode-id ep001_snip
 ls -la artifacts/seriesA/ep001_snip/scenes
 find artifacts/seriesA/ep001_snip/scenes -maxdepth 5 -type f -iname "*merged*" -print
 find artifacts/seriesA/ep001_snip/scenes -maxdepth 5 -type f \\( -iname "*.jpg" -o -iname "*.png" -o -iname "*.webp" \\) | head
@@ -426,6 +456,7 @@ Notes:
 * Subtitle overrides: `SUBTITLE_OFFSET_MS`, `SUBTITLE_TRIM_START_SEC`, `SUBTITLE_TRIM_END_SEC` (or `AUTOS_`-prefixed).
 * Frames overrides: `FRAMES_SAMPLE_POINTS`, `FRAMES_MIN_SCENE_SEC`, `FRAMES_FORMAT`, `FRAMES_QUALITY` (or `AUTOS_`-prefixed).
 * Vision overrides: `VISION_CAPTION_MODEL`, `VISION_TITLE_MODEL`, `VISION_DEVICE`, `VISION_BATCH_SIZE`, `VISION_TITLE_MAX_WORDS`, `VISION_TITLE_TEMPERATURE` (or `AUTOS_`-prefixed).
+* Scoring overrides: `SCORING_MODEL`, `SCORING_PROMPT_SYSTEM_PATH`, `SCORING_PROMPT_USER_PATH`, `SCORING_SCHEMA_PATH`, `SCORING_TEMPERATURE`, `SCORING_TOP_P`, `SCORING_TOP_K`, `SCORING_SEED`, `SCORING_MAX_DIALOGUE_CHARS`, `SCORING_MAX_CAPTION_CHARS`, `SCORING_MAX_TITLE_CHARS` (or `AUTOS_`-prefixed).
 
 ---
 
@@ -560,6 +591,7 @@ Use `AUTOS_LOG_LEVEL=DEBUG` while developing each stage.
 | Extract frames              | `uv run auto extract-frames --video path/to/video.mp4 --series-id seriesA --episode-id ep001` |
 | Frames summary              | `uv run auto frames-summary --series-id seriesA --episode-id ep001`                         |
 | Vision (captions+titles)    | `uv run auto vision --series-id seriesA --episode-id ep001`                                 |
+| Score scenes (Ollama)       | `uv run auto score-scenes --series-id seriesA --episode-id ep001`                           |
 | Subtitles trim              | `uv run auto subtitles-trim --input path/to/full.srt --output artifacts/seriesA/ep001/input/episode.srt --end-sec 600` |
 | Timeline build              | `uv run auto timeline --series-id seriesA --episode-id ep001 --subtitle artifacts/seriesA/ep001/input/episode.srt` |
 | Run tests                   | `TEST_VIDEO=path/to/video.mp4 uv run pytest`                                                 |

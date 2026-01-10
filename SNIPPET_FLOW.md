@@ -40,14 +40,32 @@ uv run auto pipeline \
   --subtitle artifacts/seriesA/ep001_snip/input/Tenet-English-snippet.srt
 ```
 
-## 4) Generate vision captions + titles (optional)
+## 4) Run each step separately (same outputs as pipeline)
+
+```bash
+uv run auto scene-detect --video snippets/ep001_snip.mp4 --series-id seriesA --episode-id ep001_snip --thumbs
+uv run auto scene-merge --series-id seriesA --episode-id ep001_snip --merged-thumbs --video snippets/ep001_snip.mp4
+uv run auto chunk --series-id seriesA --episode-id ep001_snip --target-sec 600 --tolerance-sec 60
+uv run auto extract-frames --video snippets/ep001_snip.mp4 --series-id seriesA --episode-id ep001_snip
+uv run auto timeline --series-id seriesA --episode-id ep001_snip --subtitle artifacts/seriesA/ep001_snip/input/Tenet-English-snippet.srt
+```
+
+## 5) Generate vision captions + titles (optional)
 
 ```bash
 uv sync --extra vision
 uv run auto vision --series-id seriesA --episode-id ep001_snip
 ```
 
-## 5) Quick checks
+## 6) Score scenes (optional, Ollama)
+
+```bash
+ollama serve
+ollama pull llama3.2:3b
+uv run auto score-scenes --series-id seriesA --episode-id ep001_snip
+```
+
+## 7) Quick checks
 
 ```bash
 ls -la artifacts/seriesA/ep001_snip/scenes

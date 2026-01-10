@@ -35,6 +35,30 @@ class YamlConfig(BaseModel):
             "title_temperature": 0.0,
         }
     )
+    scoring: Dict[str, Any] = Field(
+        default_factory=lambda: {
+            "model": "llama3.2:3b",
+            "prompt_system_path": "prompts/score_system.txt",
+            "prompt_user_path": "prompts/score_user.txt",
+            "schema_path": "prompts/score_schema.json",
+            "temperature": 0.0,
+            "top_p": 1.0,
+            "top_k": 1,
+            "seed": 0,
+            "max_dialogue_chars": 800,
+            "max_caption_chars": 240,
+            "max_title_chars": 80,
+            "weights": {
+                "hook": 1.0,
+                "clarity": 1.0,
+                "emotion": 1.0,
+                "action": 1.0,
+                "novelty": 1.0,
+                "dialogue": 1.0,
+                "visual": 1.0,
+            },
+        }
+    )
     chunking: Dict[str, Any] = Field(
         default_factory=lambda: {"target_sec": 1800, "tolerance_sec": 120}
     )
@@ -64,6 +88,17 @@ class EnvOverrides(BaseSettings):
     VISION_BATCH_SIZE: Optional[int] = None
     VISION_TITLE_MAX_WORDS: Optional[int] = None
     VISION_TITLE_TEMPERATURE: Optional[float] = None
+    SCORING_MODEL: Optional[str] = None
+    SCORING_PROMPT_SYSTEM_PATH: Optional[str] = None
+    SCORING_PROMPT_USER_PATH: Optional[str] = None
+    SCORING_SCHEMA_PATH: Optional[str] = None
+    SCORING_TEMPERATURE: Optional[float] = None
+    SCORING_TOP_P: Optional[float] = None
+    SCORING_TOP_K: Optional[int] = None
+    SCORING_SEED: Optional[int] = None
+    SCORING_MAX_DIALOGUE_CHARS: Optional[int] = None
+    SCORING_MAX_CAPTION_CHARS: Optional[int] = None
+    SCORING_MAX_TITLE_CHARS: Optional[int] = None
 
 
 def load_dotenv(path: Path) -> Dict[str, str]:
@@ -171,6 +206,50 @@ def _apply_dotenv(cfg: YamlConfig, data: Dict[str, str]) -> None:
     if vision_temp is not None:
         cfg.vision["title_temperature"] = float(vision_temp)
 
+    scoring_model = _get_value("SCORING_MODEL", "AUTOS_SCORING_MODEL")
+    if scoring_model is not None:
+        cfg.scoring["model"] = scoring_model
+
+    scoring_system = _get_value("SCORING_PROMPT_SYSTEM_PATH", "AUTOS_SCORING_PROMPT_SYSTEM_PATH")
+    if scoring_system is not None:
+        cfg.scoring["prompt_system_path"] = scoring_system
+
+    scoring_user = _get_value("SCORING_PROMPT_USER_PATH", "AUTOS_SCORING_PROMPT_USER_PATH")
+    if scoring_user is not None:
+        cfg.scoring["prompt_user_path"] = scoring_user
+
+    scoring_schema = _get_value("SCORING_SCHEMA_PATH", "AUTOS_SCORING_SCHEMA_PATH")
+    if scoring_schema is not None:
+        cfg.scoring["schema_path"] = scoring_schema
+
+    scoring_temp = _get_value("SCORING_TEMPERATURE", "AUTOS_SCORING_TEMPERATURE")
+    if scoring_temp is not None:
+        cfg.scoring["temperature"] = float(scoring_temp)
+
+    scoring_top_p = _get_value("SCORING_TOP_P", "AUTOS_SCORING_TOP_P")
+    if scoring_top_p is not None:
+        cfg.scoring["top_p"] = float(scoring_top_p)
+
+    scoring_top_k = _get_value("SCORING_TOP_K", "AUTOS_SCORING_TOP_K")
+    if scoring_top_k is not None:
+        cfg.scoring["top_k"] = int(float(scoring_top_k))
+
+    scoring_seed = _get_value("SCORING_SEED", "AUTOS_SCORING_SEED")
+    if scoring_seed is not None:
+        cfg.scoring["seed"] = int(float(scoring_seed))
+
+    scoring_dialogue = _get_value("SCORING_MAX_DIALOGUE_CHARS", "AUTOS_SCORING_MAX_DIALOGUE_CHARS")
+    if scoring_dialogue is not None:
+        cfg.scoring["max_dialogue_chars"] = int(float(scoring_dialogue))
+
+    scoring_caption = _get_value("SCORING_MAX_CAPTION_CHARS", "AUTOS_SCORING_MAX_CAPTION_CHARS")
+    if scoring_caption is not None:
+        cfg.scoring["max_caption_chars"] = int(float(scoring_caption))
+
+    scoring_title = _get_value("SCORING_MAX_TITLE_CHARS", "AUTOS_SCORING_MAX_TITLE_CHARS")
+    if scoring_title is not None:
+        cfg.scoring["max_title_chars"] = int(float(scoring_title))
+
 
 def load_config(config_path: str | Path = "config.yaml") -> YamlConfig:
     p = Path(config_path)
@@ -248,5 +327,38 @@ def load_config(config_path: str | Path = "config.yaml") -> YamlConfig:
 
     if env.VISION_TITLE_TEMPERATURE is not None:
         cfg.vision["title_temperature"] = float(env.VISION_TITLE_TEMPERATURE)
+
+    if env.SCORING_MODEL is not None:
+        cfg.scoring["model"] = env.SCORING_MODEL
+
+    if env.SCORING_PROMPT_SYSTEM_PATH is not None:
+        cfg.scoring["prompt_system_path"] = env.SCORING_PROMPT_SYSTEM_PATH
+
+    if env.SCORING_PROMPT_USER_PATH is not None:
+        cfg.scoring["prompt_user_path"] = env.SCORING_PROMPT_USER_PATH
+
+    if env.SCORING_SCHEMA_PATH is not None:
+        cfg.scoring["schema_path"] = env.SCORING_SCHEMA_PATH
+
+    if env.SCORING_TEMPERATURE is not None:
+        cfg.scoring["temperature"] = float(env.SCORING_TEMPERATURE)
+
+    if env.SCORING_TOP_P is not None:
+        cfg.scoring["top_p"] = float(env.SCORING_TOP_P)
+
+    if env.SCORING_TOP_K is not None:
+        cfg.scoring["top_k"] = int(env.SCORING_TOP_K)
+
+    if env.SCORING_SEED is not None:
+        cfg.scoring["seed"] = int(env.SCORING_SEED)
+
+    if env.SCORING_MAX_DIALOGUE_CHARS is not None:
+        cfg.scoring["max_dialogue_chars"] = int(env.SCORING_MAX_DIALOGUE_CHARS)
+
+    if env.SCORING_MAX_CAPTION_CHARS is not None:
+        cfg.scoring["max_caption_chars"] = int(env.SCORING_MAX_CAPTION_CHARS)
+
+    if env.SCORING_MAX_TITLE_CHARS is not None:
+        cfg.scoring["max_title_chars"] = int(env.SCORING_MAX_TITLE_CHARS)
 
     return cfg

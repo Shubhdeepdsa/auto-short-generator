@@ -15,6 +15,7 @@ from autos.scene_merge import run_scene_merge
 from autos.scene_thumbs import export_scene_thumbnails_from_json
 from autos.subtitles import run_timeline_base, trim_srt
 from autos.vision import run_vision_captions, run_vision_titles
+from autos.scoring import run_scoring
 
 app = typer.Typer(help="Auto-Shorts Generator CLI (project bootstrap + pipeline stages).")
 
@@ -217,6 +218,7 @@ def pipeline(
     frames_format: str | None = typer.Option(None, "--frames-format", help="Image format (jpg|png)"),
     frames_quality: int | None = typer.Option(None, "--frames-quality", help="jpg:2-31, png:0-9"),
     vision: bool = typer.Option(False, "--vision/--no-vision", help="Run vision captions + titles"),
+    score: bool = typer.Option(False, "--score/--no-score", help="Run LLM scoring after timeline"),
 ):
     """
     Run scene detection + merge + chunking in a single command.
@@ -355,6 +357,28 @@ def pipeline(
             subtitle_offset_ms=offset,
         )
 
+    scores_root: Path | None = None
+    if score:
+        scores_root = run_scoring(
+            artifacts_root=cfg.artifacts_dir,
+            series_id=series_id,
+            episode_id=episode_id,
+            model=str(cfg.scoring.get("model", "")),
+            system_prompt_path=Path(cfg.scoring.get("prompt_system_path", "prompts/score_system.txt")),
+            user_prompt_path=Path(cfg.scoring.get("prompt_user_path", "prompts/score_user.txt")),
+            schema_path=Path(cfg.scoring.get("schema_path", "prompts/score_schema.json")),
+            temperature=float(cfg.scoring.get("temperature", 0.0)),
+            top_p=float(cfg.scoring.get("top_p", 1.0)),
+            top_k=int(cfg.scoring.get("top_k", 1)),
+            seed=int(cfg.scoring.get("seed", 0)),
+            max_dialogue_chars=int(cfg.scoring.get("max_dialogue_chars", 800)),
+            max_caption_chars=int(cfg.scoring.get("max_caption_chars", 240)),
+            max_title_chars=int(cfg.scoring.get("max_title_chars", 80)),
+            weights=dict(cfg.scoring.get("weights", {})),
+            overwrite=False,
+            show_progress=True,
+        )
+
     typer.echo("✅ Pipeline done.")
     typer.echo(f"Raw CSV → {csv_path}")
     typer.echo(f"Raw JSON → {json_path}")
@@ -367,6 +391,8 @@ def pipeline(
         typer.echo(f"Vision → {vision_root}")
     if timeline_path is not None:
         typer.echo(f"Timeline → {timeline_path}")
+    if scores_root is not None:
+        typer.echo(f"Scores → {scores_root}")
     if thumbs:
         typer.echo(f"Thumbs → artifacts/{series_id}/{episode_id}/scenes/thumbs/raw/")
     if merged_thumbs:
@@ -628,6 +654,62 @@ def vision(
 
     typer.echo("✅ Vision captions + titles done.")
     typer.echo(f"Vision → {out_root}")
+
+
+@app.command("score-scenes")
+def score_scenes(
+    series_id: str = typer.Option(..., "--series-id", "-s"),
+    episode_id: str = typer.Option(..., "--episode-id", "-e"),
+    config_path: Path = typer.Option(Path("config.yaml"), "--config", help="Path to config.yaml"),
+    model: str | None = typer.Option(None, "--model", help="Ollama model name"),
+    system_prompt_path: Path | None = typer.Option(None, "--system-prompt", help="System prompt path"),
+    user_prompt_path: Path | None = typer.Option(None, "--user-prompt", help="User prompt path"),
+    schema_path: Path | None = typer.Option(None, "--schema", help="Schema JSON path"),
+    temperature: float | None = typer.Option(None, "--temperature", help="LLM temperature"),
+    top_p: float | None = typer.Option(None, "--top-p", help="LLM top_p"),
+    top_k: int | None = typer.Option(None, "--top-k", help="LLM top_k"),
+    seed: int | None = typer.Option(None, "--seed", help="LLM seed"),
+    max_dialogue_chars: int | None = typer.Option(None, "--max-dialogue-chars", help="Max dialogue chars"),
+    max_caption_chars: int | None = typer.Option(None, "--max-caption-chars", help="Max caption chars"),
+    max_title_chars: int | None = typer.Option(None, "--max-title-chars", help="Max title chars"),
+    overwrite: bool = typer.Option(False, "--overwrite", help="Overwrite existing scores"),
+    progress: bool = typer.Option(True, "--progress/--no-progress", help="Show progress bar"),
+):
+    """
+    Score scenes using a local Ollama model and write scores/scores.json + scores.csv.
+    """
+    cfg = load_config(config_path)
+    setup_logging(cfg.logging.get("level", "INFO"))
+
+    scoring = cfg.scoring
+    out_root = run_scoring(
+        artifacts_root=cfg.artifacts_dir,
+        series_id=series_id,
+        episode_id=episode_id,
+        model=str(model or scoring.get("model", "")),
+        system_prompt_path=system_prompt_path or Path(scoring.get("prompt_system_path", "prompts/score_system.txt")),
+        user_prompt_path=user_prompt_path or Path(scoring.get("prompt_user_path", "prompts/score_user.txt")),
+        schema_path=schema_path or Path(scoring.get("schema_path", "prompts/score_schema.json")),
+        temperature=float(temperature if temperature is not None else scoring.get("temperature", 0.0)),
+        top_p=float(top_p if top_p is not None else scoring.get("top_p", 1.0)),
+        top_k=int(top_k if top_k is not None else scoring.get("top_k", 1)),
+        seed=int(seed if seed is not None else scoring.get("seed", 0)),
+        max_dialogue_chars=int(
+            max_dialogue_chars if max_dialogue_chars is not None else scoring.get("max_dialogue_chars", 800)
+        ),
+        max_caption_chars=int(
+            max_caption_chars if max_caption_chars is not None else scoring.get("max_caption_chars", 240)
+        ),
+        max_title_chars=int(
+            max_title_chars if max_title_chars is not None else scoring.get("max_title_chars", 80)
+        ),
+        weights=dict(scoring.get("weights", {})),
+        overwrite=overwrite,
+        show_progress=progress,
+    )
+
+    typer.echo("✅ Scoring done.")
+    typer.echo(f"Scores → {out_root}")
 
 
 @app.command("subtitles-trim")

@@ -1,0 +1,23 @@
+{
+  "type": "object",
+  "required": ["scene_index", "scores", "rationale"],
+  "properties": {
+    "scene_index": { "type": "integer" },
+    "scores": {
+      "type": "object",
+      "required": ["hook", "clarity", "emotion", "action", "novelty", "dialogue", "visual"],
+      "properties": {
+        "hook": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "clarity": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "emotion": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "action": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "novelty": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "dialogue": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "visual": { "type": "integer", "minimum": 0, "maximum": 10 }
+      },
+      "additionalProperties": false
+    },
+    "rationale": { "type": "string" }
+  },
+  "additionalProperties": false
+}
